@@ -1,8 +1,9 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import numpy as np
+import pytest
 import torch
 
-from mmocr.models.textdet.dense_heads import DRRGHead
+from mmocr.models.textdet.dense_heads import DRRGHead, FCOSHead
 
 
 def test_drrg_head():
@@ -80,3 +81,26 @@ def test_drrg_head():
     results = drrg_head.get_boundary(
         edges, scores, text_comps, img_metas, rescale=True)
     assert 'boundary_result' in results.keys()
+
+
+@pytest.mark.parametrize('with_bezier', [True, False])
+def test_fcos_head(with_bezier):
+    """Tests fcos head loss when truth is empty and non-empty."""
+    s = 256
+    head = FCOSHead(num_classes=4, in_channels=1, with_bezier=with_bezier)
+    feat = [
+        torch.rand(1, 1, s // feat_size, s // feat_size)
+        for feat_size in [4, 8, 16, 32, 64]
+    ]
+    preds = head.forward(feat)
+    cls_scores = preds['cls_scores']
+    bbox_preds = preds['bbox_preds']
+    centerness = preds['centernesses']
+    if with_bezier:
+        bezier_preds = preds['bezier_preds']
+    for i, feat_size in enumerate([64, 32, 16, 8, 4]):
+        assert cls_scores[i].shape == (1, 4, feat_size, feat_size)
+        assert bbox_preds[i].shape == (1, 4, feat_size, feat_size)
+        assert centerness[i].shape == (1, 1, feat_size, feat_size)
+        if with_bezier:
+            assert bezier_preds[i].shape == (1, 16, feat_size, feat_size)
