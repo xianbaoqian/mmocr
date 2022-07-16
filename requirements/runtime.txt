@@ -8,3 +8,4 @@ pyclipper
 pycocotools
 rapidfuzz>=2.0.0
 scikit-image
+huggingface_hub
